@@ -1,26 +1,56 @@
 name: YouTube 3DS Next build
+
 on:
   push:
   pull_request:
+
+permissions:
+  contents: read
 
 jobs:
   native:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with: { submodules: recursive }
+        with:
+          submodules: recursive
+
       - uses: eunchurn/devkitpro-action@v1
-        with: { version: latest }
+        with:
+          version: latest
+
       - name: Build native client
         run: make -j2
-      - name: Verify artifacts
-        run: test -f FourthTube.3dsx || test -f FourthTube.elf
+
+      - name: Verify build outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          found=0
+          for artifact in FourthTube.3dsx FourthTube.elf; do
+            if [[ -f "$artifact" ]]; then
+              echo "Found $artifact"
+              test -s "$artifact"
+              found=1
+            fi
+          done
+          if [[ "$found" -eq 0 ]]; then
+            echo "No valid native output was produced" >&2
+            exit 1
+          fi
+          if [[ -f FourthTube.cia ]]; then
+            test -s FourthTube.cia
+            echo "Found optional CIA artifact"
+          else
+            echo "CIA not produced; signing/packaging tools are not configured"
+          fi
+
       - uses: actions/upload-artifact@v4
         if: success()
         with:
           name: youtube-3ds-next-${{ github.sha }}
           path: |
-            *.3dsx
-            *.cia
-            *.elf
+            FourthTube.3dsx
+            FourthTube.cia
+            FourthTube.elf
           if-no-files-found: error
