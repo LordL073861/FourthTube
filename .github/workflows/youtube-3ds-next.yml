@@ -1,0 +1,26 @@
+name: YouTube 3DS Next build
+on:
+  push:
+  pull_request:
+
+jobs:
+  native:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { submodules: recursive }
+      - uses: eunchurn/devkitpro-action@v1
+        with: { version: latest }
+      - name: Build native client
+        run: make -j2
+      - name: Verify artifacts
+        run: test -f FourthTube.3dsx || test -f FourthTube.elf
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: youtube-3ds-next-${{ github.sha }}
+          path: |
+            *.3dsx
+            *.cia
+            *.elf
+          if-no-files-found: error
